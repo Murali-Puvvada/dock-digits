@@ -25,25 +25,25 @@ Fast. Lightweight. Keyboard-first.
 2. Arrange them in your preferred order.
 3. Use numbered shortcuts to launch or focus them.
 
-| Shortcut        | Action                     |
-|-----------------|----------------------------|
-| Option + 1      | Open first app in list     |
-| Option + 2      | Open second app in list    |
-| Option + 3      | Open third app in list     |
+| Shortcut   | Action                  |
+| ---------- | ----------------------- |
+| Option + 1 | Open first app in list  |
+| Option + 2 | Open second app in list |
+| Option + 3 | Open third app in list  |
 
 If the app is:
 
-- Not running → it launches  
-- Already running → it comes to the front  
+- Not running → it launches
+- Already running → it comes to the front
 
 ---
 
 ## 🛠 Tech Stack
 
-- **Frontend:** React + TypeScript  
-- **Framework:** Tauri  
-- **Backend:** Rust  
-- **Platform:** macOS  
+- **Frontend:** React + TypeScript
+- **Framework:** Tauri
+- **Backend:** Rust
+- **Platform:** macOS
 
 ---
 
@@ -63,3 +63,4 @@ git clone https://github.com/Murali-Puvvada/dock-digits
 cd dock-digits
 bun install
 bun tauri dev
+```
