@@ -2,6 +2,14 @@ import { useState } from "react";
 import reactLogo from "./assets/react.svg";
 import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
+import { AppEntry } from "./types/appEntry"
+
+async function loadApps() {
+  const apps = await invoke<AppEntry[]>("get_mock_apps")
+  console.log(apps)
+}
+
+loadApps()
 
 function App() {
   const [greetMsg, setGreetMsg] = useState("");
