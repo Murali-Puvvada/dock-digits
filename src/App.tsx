@@ -1,57 +1,48 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
+import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { AppEntry } from "./types/appEntry";
 import "./App.css";
-import { AppEntry } from "./types/appEntry"
 
-async function loadApps() {
-  const apps = await invoke<AppEntry[]>("get_mock_apps")
-  console.log(apps)
+async function fetchDockApps() {
+  const apps = await invoke<AppEntry[]>("get_dock_apps");
+  return apps;
 }
 
-loadApps()
-
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+  const [dockApps, setDockApps] = useState<AppEntry[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
+  useEffect(() => {
+    async function init() {
+      const apps = await fetchDockApps();
+      setDockApps(apps);
+    }
+
+    init();
+  }, []);
+
+  async function refreshDock() {
+    setLoading(true);
+    const apps = await fetchDockApps();
+    setDockApps(apps);
+    setLoading(false);
   }
 
   return (
     <main className="container">
-      <h1>Welcome to Tauri + React</h1>
+      <h1>Dock Digits</h1>
 
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
+      <button onClick={refreshDock} disabled={loading}>
+        {loading ? "Refreshing..." : "Refresh Dock"}
+      </button>
 
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
+      <ul>
+        {dockApps.map((app) => (
+          <li key={app.position}>
+            {app.position}. {app.name}
+          </li>
+        ))}
+      </ul>
     </main>
   );
 }
