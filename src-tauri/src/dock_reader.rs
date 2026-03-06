@@ -6,7 +6,7 @@ use crate::models::dock_app::DockApp;
 
 pub fn clean_dock_path(raw_url: &str) -> String {
     let path = raw_url.replace("file://", "");
-    
+
     urlencoding::decode(&path)
         .map(|s| s.into_owned())
         .unwrap_or(path)
@@ -24,26 +24,26 @@ pub fn read_dock_apps() -> Vec<DockApp> {
 
     if let Some(dict) = plist.as_dictionary() {
         if let Some(persistent_apps) = dict.get("persistent-apps").and_then(|v| v.as_array()) {
-
             for item in persistent_apps {
                 if let Some(tile_data) = item
                     .as_dictionary()
                     .and_then(|i| i.get("tile-data"))
                     .and_then(|t| t.as_dictionary())
                 {
-                     // 1. Get the Label (The name displayed in the Dock)
+                    // 1. Get the Label (The name displayed in the Dock)
                     let label = tile_data
                         .get("file-label")
                         .and_then(|l| l.as_string())
                         .unwrap_or("Unknown")
                         .to_string();
 
-                    let raw_url = tile_data.get("file-data")
+                    let raw_url = tile_data
+                        .get("file-data")
                         .and_then(|fd| fd.as_dictionary())
                         .and_then(|fd_dict| fd_dict.get("_CFURLString"))
                         .and_then(|url_str| url_str.as_string())
                         .unwrap_or("");
-                    
+
                     let url = clean_dock_path(raw_url);
 
                     if !url.is_empty() {
