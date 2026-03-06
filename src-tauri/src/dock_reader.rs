@@ -25,6 +25,10 @@ pub fn read_dock_apps() -> Vec<DockApp> {
     if let Some(dict) = plist.as_dictionary() {
         if let Some(persistent_apps) = dict.get("persistent-apps").and_then(|v| v.as_array()) {
             for item in persistent_apps {
+                // Stop after the first 9 apps
+                if position > 9 {
+                    break;
+                }
                 if let Some(tile_data) = item
                     .as_dictionary()
                     .and_then(|i| i.get("tile-data"))
