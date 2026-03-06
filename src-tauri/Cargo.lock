@@ -739,6 +739,7 @@ dependencies = [
 name = "dock-digits"
 version = "0.1.0"
 dependencies = [
+ "plist",
  "serde",
  "serde_json",
  "tauri",

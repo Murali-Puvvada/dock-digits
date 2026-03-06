@@ -4,7 +4,8 @@
 fn main() {
     tauri::Builder::default()
       .invoke_handler(tauri::generate_handler![
-          get_mock_apps
+          get_mock_apps,
+          get_dock_apps
       ])
       .run(tauri::generate_context!())
       .expect("error while running tauri application");
@@ -27,4 +28,11 @@ fn get_mock_apps() -> Vec<AppEntry> {
             disabled: false,
         }
     ]
+}
+
+mod dock_reader;
+
+#[tauri::command]
+fn get_dock_apps() -> Vec<(String, String)> {
+    dock_reader::read_dock_apps()
 }
