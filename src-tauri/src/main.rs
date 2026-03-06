@@ -4,10 +4,11 @@
 mod app_entry;
 mod dock_reader;
 mod models;
+mod shortcuts;
 
 use crate::models::dock_app::DockApp;
 use app_entry::AppEntry;
-use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
+use tauri_plugin_global_shortcut::{Builder, ShortcutState};
 
 fn main() {
     tauri::Builder::default()
@@ -16,20 +17,20 @@ fn main() {
         .invoke_handler(tauri::generate_handler![get_mock_apps, get_dock_apps])
         // 2. Add Plugins
         .plugin(
-            tauri_plugin_global_shortcut::Builder::new()
+            Builder::new()
                 .with_handler(|_, shortcut, event| {
                     if event.state == ShortcutState::Pressed {
-                        println!("Shortcut pressed: {:?}", shortcut);
+                        shortcuts::handle_shortcut(&shortcut);
                     }
                 })
                 .build(),
         )
         // 3. Initial Setup
         .setup(|app| {
-            // Register the actual keys
-            app.global_shortcut()
-                .register("Option+1")
-                .expect("Failed to register shortcut");
+            let dock_apps = dock_reader::read_dock_apps();
+
+            shortcuts::register_shortcuts(app.handle(), dock_apps.len());
+
             Ok(())
         })
         // 4. Start the engine (ONLY ONCE)
