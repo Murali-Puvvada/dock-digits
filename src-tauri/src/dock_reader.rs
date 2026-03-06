@@ -1,7 +1,16 @@
 use plist::Value;
 use std::path::PathBuf;
+use urlencoding;
 
 use crate::models::dock_app::DockApp;
+
+pub fn clean_dock_path(raw_url: &str) -> String {
+    let path = raw_url.replace("file://", "");
+    
+    urlencoding::decode(&path)
+        .map(|s| s.into_owned())
+        .unwrap_or(path)
+}
 
 pub fn read_dock_apps() -> Vec<DockApp> {
     let home = std::env::var("HOME").expect("Could not find HOME directory");
@@ -29,13 +38,13 @@ pub fn read_dock_apps() -> Vec<DockApp> {
                         .unwrap_or("Unknown")
                         .to_string();
 
-                    let url = tile_data
-                        .get("file-data")
+                    let raw_url = tile_data.get("file-data")
                         .and_then(|fd| fd.as_dictionary())
                         .and_then(|fd_dict| fd_dict.get("_CFURLString"))
                         .and_then(|url_str| url_str.as_string())
-                        .unwrap_or("")
-                        .to_string();
+                        .unwrap_or("");
+                    
+                    let url = clean_dock_path(raw_url);
 
                     if !url.is_empty() {
                         apps.push(DockApp {
