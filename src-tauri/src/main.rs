@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod app_entry;
+mod app_launcher;
 mod dock_reader;
 mod models;
 mod shortcuts;
@@ -14,7 +15,11 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         // 1. Register Rust functions for the Frontend
-        .invoke_handler(tauri::generate_handler![get_mock_apps, get_dock_apps])
+        .invoke_handler(tauri::generate_handler![
+            get_mock_apps,
+            get_dock_apps,
+            app_launcher::launch_app,
+        ])
         // 2. Add Plugins
         .plugin(
             Builder::new()

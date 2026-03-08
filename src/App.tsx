@@ -1,11 +1,26 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { AppEntry } from "./types/appEntry";
+import { LaunchResult } from "./types/launchResult";
 import "./App.css";
 
 async function fetchDockApps() {
   const apps = await invoke<AppEntry[]>("get_dock_apps");
+  launchApp(apps[0]);
   return apps;
+}
+
+async function launchApp(app: AppEntry) {
+  const result = await invoke<LaunchResult>("launch_app", {
+    bundleId: app.bundleId ?? null,
+    path: app.path ?? null,
+  });
+
+  console.log(result);
+
+  if (!result.success) {
+    alert(result.message);
+  }
 }
 
 function App() {
