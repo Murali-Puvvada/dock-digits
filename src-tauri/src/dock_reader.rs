@@ -33,7 +33,8 @@ pub fn read_dock_apps() -> Vec<DockApp> {
                     .as_dictionary()
                     .and_then(|i| i.get("tile-data"))
                     .and_then(|t| t.as_dictionary())
-                {                            // 1. Get the Label (The name displayed in the Dock)
+                {
+                    // 1. Get the Label (The name displayed in the Dock)
                     let label = tile_data
                         .get("file-label")
                         .and_then(|l| l.as_string())
@@ -58,8 +59,8 @@ pub fn read_dock_apps() -> Vec<DockApp> {
                     if !url.is_empty() {
                         apps.push(DockApp {
                             name: label,
-                            path: url,
-                            bundle_id,
+                            path: Some(url),
+                            bundle_id: Some(bundle_id),
                             position,
                         });
 

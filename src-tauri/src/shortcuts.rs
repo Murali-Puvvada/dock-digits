@@ -1,20 +1,22 @@
-use tauri::{AppHandle};
-use tauri_plugin_global_shortcut::{GlobalShortcutExt};
+use tauri::AppHandle;
+use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
-pub fn register_shortcuts(app: &AppHandle, count: usize) {
-    let shortcut_manager = app.global_shortcut();
+use crate::app_launcher::launch_app;
+use crate::dock_reader::read_dock_apps;
 
-    for i in 1..=count {
-        let shortcut = format!("Option+{}", i);
+pub fn register_shortcuts(app: &AppHandle) {
+    let dock_apps = read_dock_apps();
 
-        if let Err(e) = shortcut_manager.register(shortcut.as_str()) {
-            println!("Failed to register {}: {:?}", shortcut, e);
-        } else {
-            println!("Registered shortcut {}", shortcut);
+    for app_entry in dock_apps.into_iter().take(9) {
+        let shortcut_string = format!("Option+{}", app_entry.position);
+
+        if let Err(err) = app.global_shortcut().on_shortcut(
+            shortcut_string.as_str(),
+            move |_app, _shortcut, _event| {
+                let _ = launch_app(app_entry.bundle_id.clone(), app_entry.path.clone());
+            },
+        ) {
+            eprintln!("Failed to register shortcut {}: {}", shortcut_string, err);
         }
     }
-}
-
-pub fn handle_shortcut<T: std::fmt::Debug>(shortcut: &T) {
-    println!("Shortcut pressed: {:?}", shortcut);
 }
