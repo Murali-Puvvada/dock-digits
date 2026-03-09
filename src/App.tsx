@@ -6,7 +6,6 @@ import "./App.css";
 
 async function fetchDockApps() {
   const apps = await invoke<AppEntry[]>("get_dock_apps");
-  launchApp(apps[0]);
   return apps;
 }
 

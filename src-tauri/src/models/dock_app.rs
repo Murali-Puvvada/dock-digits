@@ -4,7 +4,7 @@ use serde::Serialize;
 #[serde(rename_all = "camelCase")]
 pub struct DockApp {
     pub name: String,
-    pub path: String,
-    pub bundle_id: String,
+    pub path: Option<String>,
+    pub bundle_id: Option<String>,
     pub position: usize,
 }
