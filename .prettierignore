@@ -1,0 +1,15 @@
+# Build artifacts
+dist
+dist-ssr
+target
+src-tauri/target
+
+# Dependencies
+node_modules/*
+
+# Logs
+logs
+*.log
+
+# System files
+.DS_Store
