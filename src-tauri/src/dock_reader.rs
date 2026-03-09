@@ -2,6 +2,7 @@ use plist::Value;
 use std::path::PathBuf;
 use urlencoding;
 
+use crate::icon_service::get_icon_for_app;
 use crate::models::dock_app::DockApp;
 
 pub fn clean_dock_path(raw_url: &str) -> String {
@@ -56,12 +57,15 @@ pub fn read_dock_apps() -> Vec<DockApp> {
 
                     let url = clean_dock_path(raw_url);
 
+                    let icon_path = get_icon_for_app(&url);
+
                     if !url.is_empty() {
                         apps.push(DockApp {
                             name: label,
                             path: Some(url),
                             bundle_id: Some(bundle_id),
                             position,
+                            icon_path,
                         });
 
                         position += 1;

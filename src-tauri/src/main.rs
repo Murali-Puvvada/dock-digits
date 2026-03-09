@@ -3,6 +3,7 @@
 
 mod app_launcher;
 mod dock_reader;
+mod icon_service;
 mod models;
 mod shortcuts;
 
