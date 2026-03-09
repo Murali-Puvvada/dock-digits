@@ -7,4 +7,5 @@ pub struct DockApp {
     pub path: String,
     pub bundle_id: String,
     pub position: usize,
+    pub icon_path: Option<String>,
 }
