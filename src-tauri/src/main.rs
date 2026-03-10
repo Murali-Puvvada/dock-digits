@@ -8,6 +8,11 @@ mod models;
 mod shortcuts;
 
 use crate::models::dock_app::DockApp;
+use tauri::ActivationPolicy;
+use tauri::{
+    tray::{TrayIconBuilder, TrayIconEvent},
+    Manager,
+};
 
 fn main() {
     tauri::Builder::default()
@@ -19,6 +24,21 @@ fn main() {
         ])
         // 2. Initial Setup
         .setup(|app| {
+            // Hide Dock icon (menu bar utility mode)
+            app.set_activation_policy(ActivationPolicy::Accessory);
+
+            // Tray Icon and onClick Launches the App
+            let _tray = TrayIconBuilder::new()
+                .icon(app.default_window_icon().unwrap().clone())
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click { .. } = event {
+                        let window = tray.app_handle().get_webview_window("main").unwrap();
+                        window.show().unwrap();
+                        window.set_focus().unwrap();
+                    }
+                })
+                .build(app)?;
+
             shortcuts::register_shortcuts(&app.handle());
 
             Ok(())
