@@ -3,7 +3,12 @@ import { invoke } from "@tauri-apps/api/core";
 import { AppEntry } from "./types/appEntry";
 import { LaunchResult } from "./types/launchResult";
 import "./App.css";
-import { RefreshCw, Box } from "lucide-react";
+import { Box } from "lucide-react";
+import { isEnabled } from "@tauri-apps/plugin-autostart";
+
+import { listen } from "@tauri-apps/api/event";
+import LaunchAtLogin from "./LaunchAtLogin";
+import DockSync from "./DockSync";
 
 async function fetchDockApps() {
   const apps = await invoke<AppEntry[]>("get_dock_apps");
@@ -25,22 +30,47 @@ async function launchApp(app: AppEntry) {
 function App() {
   const [dockApps, setDockApps] = useState<AppEntry[]>([]);
   const [loading, setLoading] = useState(false);
+  const [launchAtLogin, setLaunchAtLogin] = useState(false);
+
+  // Internal refresh logic (action)
+  const performRefresh = async () => {
+    setLoading(true);
+    try {
+      const apps = await fetchDockApps();
+      setDockApps(apps);
+    } catch (err) {
+      console.error("Failed to fetch dock apps:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     async function init() {
-      const apps = await fetchDockApps();
-      setDockApps(apps);
+      await performRefresh();
+      const enabled = await isEnabled();
+      setLaunchAtLogin(enabled);
     }
 
     init();
-  }, []);
 
-  async function refreshDock() {
-    setLoading(true);
-    const apps = await fetchDockApps();
-    setDockApps(apps);
-    setLoading(false);
-  }
+    // Listen for events from Rust
+    const unlistenLogin = listen<boolean>(
+      "launch-at-login-updated",
+      (event) => {
+        setLaunchAtLogin(event.payload);
+      },
+    );
+
+    const unlistenRefresh = listen("dock-apps-refreshed", () => {
+      performRefresh();
+    });
+
+    return () => {
+      unlistenLogin.then((f) => f());
+      unlistenRefresh.then((f) => f());
+    };
+  }, []);
 
   return (
     <div className="h-screen w-screen bg-transparent flex flex-col">
@@ -60,15 +90,7 @@ function App() {
             </p>
           </div>
 
-          {/* Dock Sync Button */}
-          <button
-            onClick={refreshDock}
-            disabled={loading}
-            className={`flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-zinc-100 px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-md active:scale-95 ${loading ? "opacity-70 cursor-not-allowed" : ""}`}
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-            {loading ? "Syncing..." : "Dock Sync"}
-          </button>
+          <DockSync loading={loading} />
         </div>
 
         {/* App List */}
@@ -96,7 +118,7 @@ function App() {
                     className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-lg transform group-hover:scale-105 transition-transform duration-200 overflow-hidden ${
                       app.iconPath
                         ? "bg-transparent"
-                        : "bg-gradient-to-br from-zinc-600 to-zinc-800"
+                        : "bg-linear-to-br from-zinc-600 to-zinc-800"
                     }`}
                   >
                     {app.iconPath ? (
@@ -140,6 +162,8 @@ function App() {
             })
           )}
         </div>
+
+        <LaunchAtLogin isEnabled={launchAtLogin} />
       </div>
     </div>
   );
