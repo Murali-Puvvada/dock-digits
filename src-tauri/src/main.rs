@@ -4,46 +4,56 @@
 mod app_launcher;
 mod dock_reader;
 mod icon_service;
+mod login;
 mod models;
 mod shortcuts;
+mod state;
+mod tray_menu;
 
+use crate::login::toggle_launch_at_login;
 use crate::models::dock_app::DockApp;
-use tauri::ActivationPolicy;
-use tauri::{
-    tray::{TrayIconBuilder, TrayIconEvent},
-    Manager,
-};
 
+use tauri::ActivationPolicy;
+use tauri::Emitter;
+use tauri::Manager;
+use tauri_plugin_autostart::MacosLauncher;
+
+use tauri_plugin_single_instance::init as single_instance;
 fn main() {
     tauri::Builder::default()
+        // Prevent multiple instances
+        .plugin(single_instance(|app, _, _| {
+            if let Some(window) = app.get_webview_window("main") {
+                window.show().unwrap();
+                window.set_focus().unwrap();
+            }
+        }))
+        //Tells OS to register for launch at login if needed
+        .plugin(tauri_plugin_autostart::init(
+            MacosLauncher::LaunchAgent,
+            None,
+        ))
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        // 1. Register Rust functions for the Frontend
+        // Register Rust functions for the Frontend
         .invoke_handler(tauri::generate_handler![
             get_dock_apps,
+            refresh_dock_apps,
+            toggle_launch_at_login,
             app_launcher::launch_app,
         ])
-        // 2. Initial Setup
+        // Initial Setup
         .setup(|app| {
             // Hide Dock icon (menu bar utility mode)
             app.set_activation_policy(ActivationPolicy::Accessory);
 
-            // Tray Icon and onClick Launches the App
-            let _tray = TrayIconBuilder::new()
-                .icon(app.default_window_icon().unwrap().clone())
-                .on_tray_icon_event(|tray, event| {
-                    if let TrayIconEvent::Click { .. } = event {
-                        let window = tray.app_handle().get_webview_window("main").unwrap();
-                        window.show().unwrap();
-                        window.set_focus().unwrap();
-                    }
-                })
-                .build(app)?;
+            // Setup Tray Menu
+            tray_menu::setup_tray_menu(app)?;
 
             shortcuts::register_shortcuts(&app.handle());
 
             Ok(())
         })
-        // 3. Start the engine (ONLY ONCE)
+        // Start the engine (ONLY ONCE)
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -51,4 +61,9 @@ fn main() {
 #[tauri::command]
 fn get_dock_apps() -> Vec<DockApp> {
     dock_reader::read_dock_apps()
+}
+
+#[tauri::command]
+fn refresh_dock_apps(app: tauri::AppHandle) {
+    let _ = app.emit("dock-apps-refreshed", ());
 }
