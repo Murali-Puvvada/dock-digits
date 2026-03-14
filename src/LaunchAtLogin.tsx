@@ -10,9 +10,7 @@ async function toggleLaunchAtLogin() {
 
 function LaunchAtLogin({ isEnabled }: { isEnabled: boolean }) {
   return (
-    <>
-      <div className="border-t border-zinc-800 mx-5 my-4" />
-      <div className="flex items-center justify-between px-5 pb-5">
+    <div className="flex items-center justify-between px-5 py-5">
         <div>
           <h4 className="text-zinc-100 font-semibold">Launch at Login</h4>
           <p className="text-zinc-500 text-sm">
@@ -34,7 +32,6 @@ function LaunchAtLogin({ isEnabled }: { isEnabled: boolean }) {
           />
         </button>
       </div>
-    </>
   );
 }
 

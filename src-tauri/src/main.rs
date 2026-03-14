@@ -12,6 +12,7 @@ mod tray_menu;
 
 use crate::login::toggle_launch_at_login;
 use crate::models::dock_app::DockApp;
+use crate::shortcuts::reload_shortcuts;
 
 use tauri::ActivationPolicy;
 use tauri::Emitter;
@@ -40,6 +41,7 @@ fn main() {
             refresh_dock_apps,
             toggle_launch_at_login,
             app_launcher::launch_app,
+            set_shortcut_modifiers,
         ])
         // Initial Setup
         .setup(|app| {
@@ -49,7 +51,7 @@ fn main() {
             // Setup Tray Menu
             tray_menu::setup_tray_menu(app)?;
 
-            shortcuts::register_shortcuts(&app.handle());
+            shortcuts::register_shortcuts(&app.handle(), None);
 
             Ok(())
         })
@@ -66,4 +68,9 @@ fn get_dock_apps() -> Vec<DockApp> {
 #[tauri::command]
 fn refresh_dock_apps(app: tauri::AppHandle) {
     let _ = app.emit("dock-apps-refreshed", ());
+}
+
+#[tauri::command]
+fn set_shortcut_modifiers(app: tauri::AppHandle, modifiers: Vec<String>) -> Result<(), String> {
+    reload_shortcuts(&app, modifiers)
 }
