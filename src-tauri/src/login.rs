@@ -6,7 +6,7 @@ use tauri_plugin_autostart::ManagerExt;
 pub fn toggle_launch_at_login(app: tauri::AppHandle, state: tauri::State<'_, AppState>) -> bool {
     let autolaunch_manager = app.autolaunch();
     let mut enabled_lock = state.launch_at_login.lock().unwrap();
-    
+
     // 1. Rust state updated
     *enabled_lock = !*enabled_lock;
     let is_enabled = *enabled_lock;

@@ -1,0 +1,41 @@
+name: DockDigits CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Check Rust formatting
+        run: cargo fmt --check
+        working-directory: src-tauri
+
+      - name: Run Rust linter
+        run: cargo clippy -- -D warnings
+        working-directory: src-tauri
+
+      - name: Build frontend
+        run: bun run build
+
+      - name: Build Tauri app
+        run: cargo build --release
+        working-directory: src-tauri
