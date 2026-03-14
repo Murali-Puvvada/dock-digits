@@ -27,12 +27,15 @@ jobs:
 
       - name: Check Rust formatting
         run: cargo fmt --check
+        working-directory: src-tauri
 
       - name: Run Rust linter
         run: cargo clippy -- -D warnings
+        working-directory: src-tauri
 
       - name: Build frontend
         run: bun run build
 
       - name: Build Tauri app
         run: cargo build --release
+        working-directory: src-tauri
