@@ -19,12 +19,19 @@ pub fn setup_tray_menu(app: &mut tauri::App) -> Result<(), Box<dyn std::error::E
     let login =
         CheckMenuItem::with_id(app, "login", "Launch at Login", true, enabled, None::<&str>)?;
     let refresh = MenuItem::with_id(app, "refresh", "Refresh Dock Apps", true, None::<&str>)?;
+    let settings = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
 
     let sep1 = PredefinedMenuItem::separator(app)?;
     let sep2 = PredefinedMenuItem::separator(app)?;
+    let sep3 = PredefinedMenuItem::separator(app)?;
 
-    let menu = Menu::with_items(app, &[&sep1, &open, &login, &refresh, &sep2, &quit])?;
+    let menu = Menu::with_items(
+        app,
+        &[
+            &sep1, &open, &login, &refresh, &sep2, &settings, &sep3, &quit,
+        ],
+    )?;
 
     // Manage AppState with the item handle
     app.manage(AppState {
@@ -49,6 +56,12 @@ pub fn setup_tray_menu(app: &mut tauri::App) -> Result<(), Box<dyn std::error::E
             "refresh" => {
                 let _ = app.emit("dock-apps-refreshed", ());
                 println!("Refresh Dock Apps");
+            }
+            "settings" => {
+                let window = app.get_webview_window("main").unwrap();
+                window.show().unwrap();
+                window.set_focus().unwrap();
+                let _ = app.emit("open-settings", ());
             }
             "quit" => {
                 app.exit(0);
