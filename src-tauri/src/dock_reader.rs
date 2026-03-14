@@ -1,6 +1,5 @@
 use plist::Value;
 use std::path::PathBuf;
-use urlencoding;
 
 use crate::icon_service::get_icon_for_app;
 use crate::models::dock_app::DockApp;

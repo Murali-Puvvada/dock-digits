@@ -51,7 +51,7 @@ fn main() {
             // Setup Tray Menu
             tray_menu::setup_tray_menu(app)?;
 
-            shortcuts::register_shortcuts(&app.handle(), None);
+            shortcuts::register_shortcuts(app.handle(), None);
 
             Ok(())
         })
