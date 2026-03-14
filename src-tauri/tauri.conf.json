@@ -32,5 +32,11 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "updater": {
+    "active": true,
+    "endpoints": [
+      "https://github.com/Murali-Puvvada/dock-digits/releases/latest/download/latest.json"
+    ]
   }
 }
