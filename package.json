@@ -8,6 +8,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
+    "build:universal": "tauri build --target universal-apple-darwin",
     "prepare": "husky"
   },
   "dependencies": {
@@ -15,6 +16,7 @@
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-autostart": "~2",
     "@tauri-apps/plugin-opener": "^2",
+    "@tauri-apps/plugin-updater": "^2",
     "lucide-react": "^0.577.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"

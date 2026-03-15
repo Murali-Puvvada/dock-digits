@@ -1,6 +1,7 @@
 import { ArrowLeft } from "lucide-react";
 import ShortcutConfig from "./ShortcutConfig";
 import LaunchAtLogin from "./LaunchAtLogin";
+import AutoUpdater from "./AutoUpdater";
 
 interface SettingsPageProps {
   modifiers: string[];
@@ -22,6 +23,7 @@ function Settings({
         onApplied={onModifiersChange}
       />
       <LaunchAtLogin isEnabled={launchAtLogin} />
+      <AutoUpdater />
       <div className="px-5 pb-8">
         <button
           onClick={onBack}

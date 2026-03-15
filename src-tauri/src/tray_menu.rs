@@ -20,6 +20,7 @@ pub fn setup_tray_menu(app: &mut tauri::App) -> Result<(), Box<dyn std::error::E
         CheckMenuItem::with_id(app, "login", "Launch at Login", true, enabled, None::<&str>)?;
     let refresh = MenuItem::with_id(app, "refresh", "Refresh Dock Apps", true, None::<&str>)?;
     let settings = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
+    let update = MenuItem::with_id(app, "update", "Check for Updates", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
 
     let sep1 = PredefinedMenuItem::separator(app)?;
@@ -29,7 +30,7 @@ pub fn setup_tray_menu(app: &mut tauri::App) -> Result<(), Box<dyn std::error::E
     let menu = Menu::with_items(
         app,
         &[
-            &sep1, &open, &login, &refresh, &sep2, &settings, &sep3, &quit,
+            &sep1, &open, &login, &refresh, &sep2, &settings, &update, &sep3, &quit,
         ],
     )?;
 
@@ -62,6 +63,13 @@ pub fn setup_tray_menu(app: &mut tauri::App) -> Result<(), Box<dyn std::error::E
                 window.show().unwrap();
                 window.set_focus().unwrap();
                 let _ = app.emit("open-settings", ());
+            }
+            "update" => {
+                let window = app.get_webview_window("main").unwrap();
+                window.show().unwrap();
+                window.set_focus().unwrap();
+                let _ = app.emit("open-settings", ());
+                let _ = app.emit("check-for-updates", ());
             }
             "quit" => {
                 app.exit(0);
