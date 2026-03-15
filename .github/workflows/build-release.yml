@@ -1,35 +1,72 @@
-name: Build DockDigits Release
-
+name: Publish Release
 on:
   release:
-    types: [created]
+    types: [published]
 
 jobs:
-  build:
-    runs-on: macos-latest
+  publish-tauri:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [macos-latest]
 
+    runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Bun
+      - name: setup bun
         uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
 
-      - name: Install dependencies
+      - name: install dependencies
         run: bun install
 
-      - name: Setup Rust
+      - name: setup rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install Tauri deps
-        run: brew install create-dmg
-
-      - name: Build Tauri App
-        run: bun run tauri build
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+      - name: build and release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          name: dockdigits-build
-          path: src-tauri/target/release/bundle
+          tagName: v__VERSION__ # the version will be pulled from tauri.conf.json
+          releaseName: "DockDigits v__VERSION__"
+          releaseBody: "See the assets below to download the latest version."
+          releaseDraft: false
+          prerelease: false
+          args: --target universal-apple-darwin
+
+      - name: Generate latest.json
+        run: |
+          VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          # Construct the JSON for Universal macOS
+          cat <<EOF > latest.json
+          {
+            "version": "$VERSION",
+            "notes": "See GitHub release for details.",
+            "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "platforms": {
+              "darwin-aarch64": {
+                "signature": "$(cat src-tauri/target/universal-apple-darwin/release/bundle/dmg/dock-digits_\${VERSION}_universal.dmg.sig)",
+                "url": "https://github.com/Murali-Puvvada/dock-digits/releases/download/v$VERSION/dock-digits_\${VERSION}_universal.dmg"
+              },
+              "darwin-x86_64": {
+                "signature": "$(cat src-tauri/target/universal-apple-darwin/release/bundle/dmg/dock-digits_\${VERSION}_universal.dmg.sig)",
+                "url": "https://github.com/Murali-Puvvada/dock-digits/releases/download/v$VERSION/dock-digits_\${VERSION}_universal.dmg"
+              }
+            }
+          }
+          EOF
+
+      - name: Upload latest.json manually
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: latest.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
