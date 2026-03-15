@@ -26,6 +26,8 @@ jobs:
 
       - name: setup rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin, aarch64-apple-darwin
 
       - name: build and release
         uses: tauri-apps/tauri-action@v0
@@ -34,11 +36,8 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: v__VERSION__ # the version will be pulled from tauri.conf.json
-          releaseName: "DockDigits v__VERSION__"
-          releaseBody: "See the assets below to download the latest version."
-          releaseDraft: false
-          prerelease: false
+          tagName: ${{ github.event.release.tag_name }}
+          releaseId: ${{ github.event.release.id }}
           args: --target universal-apple-darwin
 
       - name: Generate latest.json
@@ -47,17 +46,17 @@ jobs:
           # Construct the JSON for Universal macOS
           cat <<EOF > latest.json
           {
-            "version": "$VERSION",
+            "version": "v$VERSION",
             "notes": "See GitHub release for details.",
             "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "platforms": {
               "darwin-aarch64": {
-                "signature": "$(cat src-tauri/target/universal-apple-darwin/release/bundle/dmg/dock-digits_\${VERSION}_universal.dmg.sig)",
-                "url": "https://github.com/Murali-Puvvada/dock-digits/releases/download/v$VERSION/dock-digits_\${VERSION}_universal.dmg"
+                "signature": "$(cat src-tauri/target/universal-apple-darwin/release/bundle/dmg/dock-digits_${VERSION}_universal.dmg.sig)",
+                "url": "https://github.com/Murali-Puvvada/dock-digits/releases/download/${{ github.event.release.tag_name }}/dock-digits_${VERSION}_universal.dmg"
               },
               "darwin-x86_64": {
-                "signature": "$(cat src-tauri/target/universal-apple-darwin/release/bundle/dmg/dock-digits_\${VERSION}_universal.dmg.sig)",
-                "url": "https://github.com/Murali-Puvvada/dock-digits/releases/download/v$VERSION/dock-digits_\${VERSION}_universal.dmg"
+                "signature": "$(cat src-tauri/target/universal-apple-darwin/release/bundle/dmg/dock-digits_${VERSION}_universal.dmg.sig)",
+                "url": "https://github.com/Murali-Puvvada/dock-digits/releases/download/${{ github.event.release.tag_name }}/dock-digits_${VERSION}_universal.dmg"
               }
             }
           }
