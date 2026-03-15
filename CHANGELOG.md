@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.1](https://github.com/Murali-Puvvada/dock-digits/compare/v1.0.0...v1.0.1) (2026-03-15)
+
+
+### Bug Fixes
+
+* MUR-25 Add DMG Installer to Release Assets ([cec0f04](https://github.com/Murali-Puvvada/dock-digits/commit/cec0f04054964a97e2971dd440e70fbc0cd0f4a8))
+* MUR-25 Add DMG Installer to Release Assets ([4028892](https://github.com/Murali-Puvvada/dock-digits/commit/4028892f1ac3eb4c2bf3f038b8daa47686f3b5a5))
+
 ## 1.0.0 (2026-03-15)
 
 
