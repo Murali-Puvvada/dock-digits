@@ -1,5 +1,57 @@
 # Changelog
 
+## [1.1.0](https://github.com/Murali-Puvvada/dock-digits/compare/v1.0.1...v1.1.0) (2026-03-15)
+
+
+### Features
+
+* MUR-10 Prettier ([9019d56](https://github.com/Murali-Puvvada/dock-digits/commit/9019d5629eb973ebaef894e9e2e3ce990710791f))
+* MUR-10 Refresh Dock Apps ([4fd7f55](https://github.com/Murali-Puvvada/dock-digits/commit/4fd7f55c5bb7c38053f1f635ebd442b8ff08e728))
+* MUR-11 Decodee File URLs ([499aa4a](https://github.com/Murali-Puvvada/dock-digits/commit/499aa4af9d7bcae7273612e1e239eb6bb8a704ea))
+* MUR-11 Decodee File URLs ([cf0db82](https://github.com/Murali-Puvvada/dock-digits/commit/cf0db820995b06c0379c5b72e57d327d96ccdd4c))
+* MUR-12 Register Option+1 Test Shortcut ([36b5de6](https://github.com/Murali-Puvvada/dock-digits/commit/36b5de60f1d33d9063e71d46f371bdfbd0504bd6))
+* MUR-12 Register Option+1 Test Shortcut ([a7b17f9](https://github.com/Murali-Puvvada/dock-digits/commit/a7b17f92f78f779e9b765b5c2d081d571f609ddb))
+* MUR-13 Register Dynamic Shortcuts until 9 Dock Apps ([ea7d75b](https://github.com/Murali-Puvvada/dock-digits/commit/ea7d75bbad71790f25a651a1e5001e6a187f7487))
+* MUR-13 Register Dynamic Shortcuts until 9 Dock Apps ([65ad378](https://github.com/Murali-Puvvada/dock-digits/commit/65ad378db848c917bd2939b0fef6c882a917a832))
+* MUR-16 Launch App by Path or Bundle Identifer ([10f5499](https://github.com/Murali-Puvvada/dock-digits/commit/10f54999f00502867d72f701e3889637120fdbaf))
+* MUR-16 Launch App by Path or Bundle Identifer ([c3758af](https://github.com/Murali-Puvvada/dock-digits/commit/c3758af45d6df2ff390772e8d6f3a02b659675a1))
+* MUR-17 Launch App by Using Option + Shortcut and Cleanup Mock Apps ([caca784](https://github.com/Murali-Puvvada/dock-digits/commit/caca7848ca47ba348bfe3470d4e545a552ead757))
+* MUR-17 Launch App by Using Option + Shortcut and Cleanup Mock Apps ([4db913d](https://github.com/Murali-Puvvada/dock-digits/commit/4db913d4a8f11dddcbfa72e37deccc31ae418ca2))
+* MUR-18 Add prettierignore ([fb373b7](https://github.com/Murali-Puvvada/dock-digits/commit/fb373b7eda215e5ef23991643ec689cacc20cddf))
+* MUR-18 Build Dock Digits UI ([36a88fd](https://github.com/Murali-Puvvada/dock-digits/commit/36a88fd854e78919a326f184fadeec77cfeb91ab))
+* MUR-19 Setup App Icons ([aac9864](https://github.com/Murali-Puvvada/dock-digits/commit/aac986460c9efe8a63343ed39c529c7a112e8964))
+* MUR-19 Setup App Icons ([a251b77](https://github.com/Murali-Puvvada/dock-digits/commit/a251b77155fd18097129e7e31937f35370c94c98))
+* MUR-20 Created a Menu Bar and Shared App State(Frontend + Menu … ([633a044](https://github.com/Murali-Puvvada/dock-digits/commit/633a044f4f7275c49e5aec93d379ed02345a0f1e))
+* MUR-20 Created a Menu Bar and Shared App State(Frontend + Menu Bar) for Launch at Login ([1b52bad](https://github.com/Murali-Puvvada/dock-digits/commit/1b52bad972076772f787a9a6ee9a0478a6ecf8ef))
+* MUR-22 Custom Modifier Keys, Created a new Settings page and Ad… ([58c3d78](https://github.com/Murali-Puvvada/dock-digits/commit/58c3d782f0c5107859dee61a8dfeb2a4955fd0ca))
+* MUR-22 Custom Modifier Keys, Created a new Settings page and Added it to Menu Bar ([c5589fc](https://github.com/Murali-Puvvada/dock-digits/commit/c5589fca16dd60d9366813821c7404b92b197db2))
+* MUR-23 Create workflows for Merge, Versioning and Release ([870084f](https://github.com/Murali-Puvvada/dock-digits/commit/870084f9203de24a0e07c4bc26e335877fae0242))
+* MUR-23 Create workflows for Merge, Versioning and Release ([b5d6b8e](https://github.com/Murali-Puvvada/dock-digits/commit/b5d6b8e56e4130ab84813bc12487f26445775946))
+* MUR-23 Fix Formatting Rust ([0a3edc9](https://github.com/Murali-Puvvada/dock-digits/commit/0a3edc9cfaaa383598b72979eb4cd26fae9e73b1))
+* MUR-23 Fix Liniting Issues ([1bfb92c](https://github.com/Murali-Puvvada/dock-digits/commit/1bfb92cd2c5e6562754c4f5da6e831252f983a45))
+* MUR-23 Setup working directory for Rust ([40e3b93](https://github.com/Murali-Puvvada/dock-digits/commit/40e3b93ccb6c22c5ce043cdc8eca66c3e24c1f2d))
+* MUR-24 Add Auto Updater and Setup CI Flow for Release ([756228c](https://github.com/Murali-Puvvada/dock-digits/commit/756228cf23a04748a47d733a09b6923e41773a16))
+* MUR-24 Add Auto Updater and Setup CI Flow for Release ([438d49a](https://github.com/Murali-Puvvada/dock-digits/commit/438d49afe5288c72ef86fff6a0225e8de5660120))
+* MUR-5 Initial Setup ([020845c](https://github.com/Murali-Puvvada/dock-digits/commit/020845cf9ca8418631ad21797791b126394f5376))
+* MUR-5 Initial Setup ([965c35c](https://github.com/Murali-Puvvada/dock-digits/commit/965c35c4c25cf2c6e56677d39723a66a036523e4))
+* MUR-5 Initial Setup ([21050cc](https://github.com/Murali-Puvvada/dock-digits/commit/21050cc97bb636e87718e4f52e0c92057ec67d87))
+* MUR-5 Migrate to TS ([4502cc6](https://github.com/Murali-Puvvada/dock-digits/commit/4502cc68b674e41f2673a71380c49a102b380149))
+* MUR-5 Migrate to TS ([9378e1e](https://github.com/Murali-Puvvada/dock-digits/commit/9378e1ed04ce8addf1d267f9ffd944cff96696c8))
+* MUR-6 Create an App Entry ([1c3f54d](https://github.com/Murali-Puvvada/dock-digits/commit/1c3f54df75c927f5778b8e0d75d6957d6d70f0da))
+* MUR-6 Create an App Entry ([3ec180e](https://github.com/Murali-Puvvada/dock-digits/commit/3ec180ef8fc6250cde584d484643be1ed443f51d))
+* MUR-7 Read Dock Apps using dock_reader ([a335fe2](https://github.com/Murali-Puvvada/dock-digits/commit/a335fe21188aa030ca605dd57e01d4963e02183f))
+* MUR-7 Read Dock Apps using dock_reader ([87bb4c7](https://github.com/Murali-Puvvada/dock-digits/commit/87bb4c7ce6b726e4e10c0a6c0142931abca42832))
+* MUR-9 Change Prettier Config ([711694b](https://github.com/Murali-Puvvada/dock-digits/commit/711694b9f1c1c21c1068e3724c7610bd1f651bb4))
+* MUR-9 Display Dock Apps as a List on Frontend ([8640d98](https://github.com/Murali-Puvvada/dock-digits/commit/8640d98dae602db84ce59388284e74c47a8af319))
+
+
+### Bug Fixes
+
+* MUR-25 Add DMG Installer to Release Assets ([cec0f04](https://github.com/Murali-Puvvada/dock-digits/commit/cec0f04054964a97e2971dd440e70fbc0cd0f4a8))
+* MUR-25 Add DMG Installer to Release Assets ([4028892](https://github.com/Murali-Puvvada/dock-digits/commit/4028892f1ac3eb4c2bf3f038b8daa47686f3b5a5))
+* MUR-26 Skip Tauri for Uploading Assets ([1afb735](https://github.com/Murali-Puvvada/dock-digits/commit/1afb73521b1fdc51071a4792edd8b99a36fcbfea))
+* MUR-26 Skip Tauri for Uploading Assets ([25a92f1](https://github.com/Murali-Puvvada/dock-digits/commit/25a92f1be0736286fe4e04258fff1e3aa1142bb5))
+
 ## [1.0.1](https://github.com/Murali-Puvvada/dock-digits/compare/v1.0.0...v1.0.1) (2026-03-15)
 
 
