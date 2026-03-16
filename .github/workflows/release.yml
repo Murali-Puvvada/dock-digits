@@ -1,0 +1,236 @@
+name: Release macOS App
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (compute version only, don't release)"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  release:
+    runs-on: macos-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      # ── 1. Checkout main with full history (needed to read all commits) ──
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── 2. Setup Bun ──
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      # ── 3. Setup Rust ──
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      # ── 4. Cache Rust dependencies ──
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      # ── 5. Compute next version from conventional commits ──
+      - name: Compute next version
+        id: semver
+        run: |
+          # Get the latest vX.Y.Z tag
+          LAST_TAG=$(git tag --list 'v*.*.*' --sort=-version:refname | head -n 1)
+
+          if [ -z "$LAST_TAG" ]; then
+            echo "ℹ️  No previous tags found. Starting from v0.0.0"
+            LAST_TAG="v0.0.0"
+            COMMITS=$(git log --pretty=format:"%s" HEAD)
+          else
+            echo "✅ Last release tag: $LAST_TAG"
+            COMMITS=$(git log --pretty=format:"%s" "${LAST_TAG}..HEAD")
+          fi
+
+          if [ -z "$COMMITS" ]; then
+            echo "❌ No commits since last release ($LAST_TAG). Nothing to release."
+            exit 1
+          fi
+
+          echo "📝 Commits since $LAST_TAG:"
+          echo "$COMMITS"
+
+          # Parse current version
+          CURRENT="${LAST_TAG#v}"
+          MAJOR=$(echo "$CURRENT" | cut -d. -f1)
+          MINOR=$(echo "$CURRENT" | cut -d. -f2)
+          PATCH=$(echo "$CURRENT" | cut -d. -f3)
+
+          # Determine bump type — scan all commits, take highest impact
+          BUMP="patch"
+
+          while IFS= read -r msg; do
+            if echo "$msg" | grep -Eq '^[a-z]+(\(.+\))?!:' || echo "$msg" | grep -q 'BREAKING CHANGE'; then
+              BUMP="major"
+              break   # can't go higher
+            fi
+            if echo "$msg" | grep -Eq '^feat(\(.+\))?:'; then
+              BUMP="minor"
+            fi
+          done <<< "$COMMITS"
+
+          echo "📦 Bump type: $BUMP"
+
+          # Calculate next version
+          if [ "$BUMP" = "major" ]; then
+            NEXT_VERSION="$((MAJOR + 1)).0.0"
+          elif [ "$BUMP" = "minor" ]; then
+            NEXT_VERSION="${MAJOR}.$((MINOR + 1)).0"
+          else
+            NEXT_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+          fi
+
+          echo "🚀 Next version: $NEXT_VERSION"
+          echo "version=$NEXT_VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$NEXT_VERSION"    >> $GITHUB_OUTPUT
+          echo "last_tag=$LAST_TAG"    >> $GITHUB_OUTPUT
+          echo "bump=$BUMP"            >> $GITHUB_OUTPUT
+
+      # ── 6. Generate changelog from conventional commits ──
+      - name: Generate changelog
+        id: changelog
+        run: |
+          LAST_TAG="${{ steps.semver.outputs.last_tag }}"
+
+          if [ "$LAST_TAG" = "v0.0.0" ]; then
+            COMMITS=$(git log --pretty=format:"%h %s" HEAD)
+          else
+            COMMITS=$(git log --pretty=format:"%h %s" "${LAST_TAG}..HEAD")
+          fi
+
+          BREAKING=""
+          FEATURES=""
+          FIXES=""
+          OTHER=""
+
+          while IFS= read -r line; do
+            HASH=$(echo "$line" | cut -d' ' -f1)
+            MSG=$(echo "$line"  | cut -d' ' -f2-)
+
+            if echo "$MSG" | grep -Eq '^[a-z]+(\(.+\))?!:' || echo "$MSG" | grep -q 'BREAKING CHANGE'; then
+              BREAKING="${BREAKING}- ${MSG} (${HASH})\n"
+            elif echo "$MSG" | grep -Eq '^feat(\(.+\))?:'; then
+              FEATURES="${FEATURES}- ${MSG} (${HASH})\n"
+            elif echo "$MSG" | grep -Eq '^fix(\(.+\))?:'; then
+              FIXES="${FIXES}- ${MSG} (${HASH})\n"
+            elif echo "$MSG" | grep -Eq '^(perf|refactor|chore|docs|style|test)(\(.+\))?:'; then
+              OTHER="${OTHER}- ${MSG} (${HASH})\n"
+            fi
+          done <<< "$COMMITS"
+
+          NOTES=""
+          [ -n "$BREAKING" ] && NOTES="${NOTES}### ⚠️ Breaking Changes\n${BREAKING}\n"
+          [ -n "$FEATURES" ] && NOTES="${NOTES}### ✨ New Features\n${FEATURES}\n"
+          [ -n "$FIXES"    ] && NOTES="${NOTES}### 🐛 Bug Fixes\n${FIXES}\n"
+          [ -n "$OTHER"    ] && NOTES="${NOTES}### 🔧 Other Changes\n${OTHER}\n"
+          [ -z "$NOTES"    ] && NOTES="- Various improvements and updates\n"
+
+          printf "$NOTES" > /tmp/changelog.md
+          echo "✅ Changelog generated:"
+          cat /tmp/changelog.md
+
+      # ── 7. Stop here if dry run ──
+      - name: Dry run summary
+        if: ${{ inputs.dry_run == true }}
+        run: |
+          echo "🧪 DRY RUN — no changes will be made."
+          echo ""
+          echo "  Last tag     : ${{ steps.semver.outputs.last_tag }}"
+          echo "  Next version : ${{ steps.semver.outputs.tag }}"
+          echo "  Bump type    : ${{ steps.semver.outputs.bump }}"
+          echo ""
+          echo "Changelog preview:"
+          cat /tmp/changelog.md
+          exit 0
+
+      # ── 8. Bump version in all config files ──
+      - name: Bump version in package.json
+        run: |
+          VERSION="${{ steps.semver.outputs.version }}"
+          jq --arg v "$VERSION" '.version = $v' package.json > tmp.json && mv tmp.json package.json
+          echo "✅ package.json → $VERSION"
+
+      - name: Bump version in tauri.conf.json
+        run: |
+          VERSION="${{ steps.semver.outputs.version }}"
+          # Supports both Tauri v1 (.package.version) and Tauri v2 (.version)
+          if jq -e '.package.version' src-tauri/tauri.conf.json > /dev/null 2>&1; then
+            jq --arg v "$VERSION" '.package.version = $v' src-tauri/tauri.conf.json > tmp.json
+          else
+            jq --arg v "$VERSION" '.version = $v' src-tauri/tauri.conf.json > tmp.json
+          fi
+          mv tmp.json src-tauri/tauri.conf.json
+          echo "✅ tauri.conf.json → $VERSION"
+
+      - name: Bump version in Cargo.toml
+        run: |
+          VERSION="${{ steps.semver.outputs.version }}"
+          sed -i '' "0,/^version = \"[^\"]*\"/s//version = \"$VERSION\"/" src-tauri/Cargo.toml
+          echo "✅ Cargo.toml → $VERSION"
+
+      # ── 9. Commit version bump and push tag ──
+      - name: Commit version bump and push tag
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml
+          git commit -m "chore: release ${{ steps.semver.outputs.tag }} [skip ci]"
+          git tag "${{ steps.semver.outputs.tag }}"
+          git push origin main
+          git push origin "${{ steps.semver.outputs.tag }}"
+          echo "✅ Pushed version bump + tag ${{ steps.semver.outputs.tag }}"
+
+      # ── 10. Install frontend dependencies ──
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile
+
+      # ── 11. Build React frontend ──
+      - name: Build frontend
+        run: bun run build
+
+      # ── 12. Build Tauri universal macOS DMG (Apple Silicon + Intel) ──
+      - name: Build Tauri app
+        run: bun run tauri build -- --target universal-apple-darwin
+
+      # ── 13. Locate the built DMG ──
+      - name: Find DMG artifact
+        id: dmg
+        run: |
+          DMG_PATH=$(find src-tauri/target/universal-apple-darwin/release/bundle/dmg -name "*.dmg" | head -n 1)
+          if [ -z "$DMG_PATH" ]; then
+            echo "❌ No DMG found — check the Tauri build logs above."
+            exit 1
+          fi
+          echo "path=$DMG_PATH"              >> $GITHUB_OUTPUT
+          echo "name=$(basename $DMG_PATH)"  >> $GITHUB_OUTPUT
+          echo "✅ DMG: $DMG_PATH"
+
+      # ── 14. Create GitHub Release and attach DMG ──
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.semver.outputs.tag }}
+          name: "Release ${{ steps.semver.outputs.tag }}"
+          body_path: /tmp/changelog.md
+          files: ${{ steps.dmg.outputs.path }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
