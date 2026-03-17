@@ -316,20 +316,67 @@ jobs:
             echo "✅ Tag $TAG created in Murali-Puvvada/dock-digits-releases"
           fi
 
-      # ── 15. Create GitHub Release on the PUBLIC repo and attach DMG ──
+      # ── 15. Create GitHub Release and upload DMG via API directly ──
       - name: Create GitHub Release on public repo
         if: ${{ inputs.dry_run == false }}
-        uses: softprops/action-gh-release@v2
-        with:
-          repository: Murali-Puvvada/dock-digits-releases
-          tag_name: ${{ steps.semver.outputs.tag }}
-          name: "Release ${{ steps.semver.outputs.tag }}"
-          body_path: /tmp/changelog.md
-          files: ${{ steps.dmg.outputs.path }}
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_PAT }}
+        run: |
+          TAG="${{ steps.semver.outputs.tag }}"
+          DMG_PATH="${{ steps.dmg.outputs.path }}"
+          DMG_NAME="${{ steps.dmg.outputs.name }}"
+          CHANGELOG=$(cat /tmp/changelog.md)
+
+          echo "📋 Creating release $TAG on public repo..."
+
+          # Create the release
+          RELEASE_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST \
+            -H "Authorization: Bearer ${{ secrets.RELEASE_PAT }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/Murali-Puvvada/dock-digits-releases/releases" \
+            -d "{
+              \"tag_name\": \"${TAG}\",
+              \"name\": \"Release ${TAG}\",
+              \"body\": $(echo "$CHANGELOG" | jq -Rs .),
+              \"draft\": false,
+              \"prerelease\": false
+            }")
+
+          RELEASE_STATUS=$(echo "$RELEASE_RESPONSE" | grep "HTTP_STATUS:" | cut -d: -f2)
+          RELEASE_BODY=$(echo "$RELEASE_RESPONSE" | grep -v "HTTP_STATUS:")
+
+          echo "Create release response ($RELEASE_STATUS):"
+          echo "$RELEASE_BODY"
+
+          if [ "$RELEASE_STATUS" != "201" ]; then
+            echo "❌ Failed to create release (HTTP $RELEASE_STATUS)"
+            exit 1
+          fi
+
+          # Extract upload URL from the response
+          UPLOAD_URL=$(echo "$RELEASE_BODY" | jq -r '.upload_url' | sed 's/{?name,label}//')
+          RELEASE_ID=$(echo "$RELEASE_BODY" | jq -r '.id')
+          echo "✅ Release created (id: $RELEASE_ID)"
+          echo "📤 Uploading DMG: $DMG_NAME..."
+
+          # Upload the DMG asset
+          UPLOAD_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST \
+            -H "Authorization: Bearer ${{ secrets.RELEASE_PAT }}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Content-Type: application/octet-stream" \
+            "${UPLOAD_URL}?name=${DMG_NAME}" \
+            --data-binary "@${DMG_PATH}")
+
+          UPLOAD_STATUS=$(echo "$UPLOAD_RESPONSE" | grep "HTTP_STATUS:" | cut -d: -f2)
+          UPLOAD_BODY=$(echo "$UPLOAD_RESPONSE" | grep -v "HTTP_STATUS:")
+
+          echo "Upload response ($UPLOAD_STATUS):"
+          echo "$UPLOAD_BODY" | jq '{ id, name, state, browser_download_url }'
+
+          if [ "$UPLOAD_STATUS" != "201" ]; then
+            echo "❌ Failed to upload DMG (HTTP $UPLOAD_STATUS)"
+            exit 1
+          fi
+
+          echo "✅ DMG uploaded successfully"
 
       # ── 16. Print the public download URL ──
       - name: Print download URL
