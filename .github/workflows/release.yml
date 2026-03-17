@@ -228,15 +228,34 @@ jobs:
           echo "name=$(basename $DMG_PATH)"  >> $GITHUB_OUTPUT
           echo "✅ DMG: $DMG_PATH"
 
-      # ── 14. Create GitHub Release and attach DMG ──
-      - name: Create GitHub Release
+      # ── Write changelog to file for the release body ──
+      - name: Write changelog to file
+        run: printf "${{ needs.compute.outputs.changelog }}" > /tmp/changelog.md
+
+      # ── Create GitHub Release on the PUBLIC repo and attach DMG ──
+      # Uses RELEASE_PAT (repo scope) to write to john-doe/myapp-releases
+      - name: Create GitHub Release on public repo
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.semver.outputs.tag }}
-          name: "Release ${{ steps.semver.outputs.tag }}"
+          repository: Murali-Puvvada/dock-digits-releases
+          tag_name: ${{ needs.compute.outputs.tag }}
+          name: "Release ${{ needs.compute.outputs.tag }}"
           body_path: /tmp/changelog.md
           files: ${{ steps.dmg.outputs.path }}
           draft: false
           prerelease: false
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PAT }}
+
+      # ── Print the public download URL for easy reference ──
+      - name: Print download URL
+        run: |
+          TAG="${{ needs.compute.outputs.tag }}"
+          DMG="${{ steps.dmg.outputs.name }}"
+          echo ""
+          echo "✅ Release published!"
+          echo ""
+          echo "🔗 Public download URL:"
+          echo "   https://github.com/Murali-Puvvada/dock-digits-releases/releases/download/${TAG}/${DMG}"
+          echo ""
+          echo "Paste this URL into your website download button."
