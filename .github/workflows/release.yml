@@ -254,7 +254,41 @@ jobs:
           echo "name=$(basename $DMG_PATH)"  >> $GITHUB_OUTPUT
           echo "✅ DMG: $DMG_PATH"
 
-      # ── 14. Create GitHub Release on the PUBLIC repo and attach DMG ──
+      # ── 14. Create the tag in the PUBLIC repo first ──
+      # softprops/action-gh-release requires the tag to already exist
+      # in the target repo — it does not create it automatically.
+      - name: Create tag in public repo
+        run: |
+          TAG="${{ steps.semver.outputs.tag }}"
+
+          # Check if tag already exists in the public repo
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.RELEASE_PAT }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/Murali-Puvvada/dock-digits-releases/git/refs/tags/${TAG})
+
+          if [ "$STATUS" = "200" ]; then
+            echo "ℹ️  Tag $TAG already exists in public repo — skipping."
+          else
+            # Get the latest commit SHA on the public repo default branch
+            SHA=$(curl -s \
+              -H "Authorization: Bearer ${{ secrets.RELEASE_PAT }}" \
+              -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/Murali-Puvvada/dock-digits-releases/commits/HEAD \
+              | jq -r '.sha')
+
+            echo "📌 Creating tag $TAG at commit $SHA in public repo..."
+
+            curl -s -X POST \
+              -H "Authorization: Bearer ${{ secrets.RELEASE_PAT }}" \
+              -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/Murali-Puvvada/dock-digits-releases/git/refs \
+              -d "{\"ref\": \"refs/tags/${TAG}\", \"sha\": \"${SHA}\"}"
+
+            echo "✅ Tag $TAG created in Murali-Puvvada/dock-digits-releases"
+          fi
+
+      # ── 15. Create GitHub Release on the PUBLIC repo and attach DMG ──
       - name: Create GitHub Release on public repo
         uses: softprops/action-gh-release@v2
         with:
@@ -268,7 +302,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_PAT }}
 
-      # ── 15. Print the public download URL for easy reference ──
+      # ── 16. Print the public download URL for easy reference ──
       - name: Print download URL
         run: |
           TAG="${{ steps.semver.outputs.tag }}"
