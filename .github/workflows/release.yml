@@ -53,6 +53,28 @@ jobs:
       - name: Compute next version
         id: semver
         run: |
+          # 1. Check if the current commit already has a version tag (vX.Y.Z)
+          # This happens if a previous run failed AFTER pushing the tag.
+          EXISTING_TAG=$(git tag --points-at HEAD 'v*.*.*' | head -n 1)
+
+          if [ -n "$EXISTING_TAG" ]; then
+            echo "✨ Current commit already has a version tag: $EXISTING_TAG"
+            echo "⏩ Skipping version bump and treating this as a retry."
+            
+            # Find the tag before this one to still allow changelog generation
+            PREV_TAG=$(git tag --list 'v*.*.*' --sort=-version:refname | grep -A 1 "^${EXISTING_TAG}$" | tail -n 1)
+            [ "$PREV_TAG" = "$EXISTING_TAG" ] && PREV_TAG="" # Only one tag exists
+            
+            echo "version=${EXISTING_TAG#v}" >> $GITHUB_OUTPUT
+            echo "tag=$EXISTING_TAG"          >> $GITHUB_OUTPUT
+            echo "last_tag=${PREV_TAG:-v0.0.0}" >> $GITHUB_OUTPUT
+            echo "already_bumped=true"        >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "already_bumped=false" >> $GITHUB_OUTPUT
+
+          # 2. Otherwise, compute next version normally
           # Get the latest vX.Y.Z tag
           LAST_TAG=$(git tag --list 'v*.*.*' --sort=-version:refname | head -n 1)
 
@@ -168,12 +190,14 @@ jobs:
 
       # ── 8. Bump version in all config files ──
       - name: Bump version in package.json
+        if: steps.semver.outputs.already_bumped != 'true'
         run: |
           VERSION="${{ steps.semver.outputs.version }}"
           jq --arg v "$VERSION" '.version = $v' package.json > tmp.json && mv tmp.json package.json
           echo "✅ package.json → $VERSION"
 
       - name: Bump version in tauri.conf.json
+        if: steps.semver.outputs.already_bumped != 'true'
         run: |
           VERSION="${{ steps.semver.outputs.version }}"
           # Supports both Tauri v1 (.package.version) and Tauri v2 (.version)
@@ -186,6 +210,7 @@ jobs:
           echo "✅ tauri.conf.json → $VERSION"
 
       - name: Bump version in Cargo.toml
+        if: steps.semver.outputs.already_bumped != 'true'
         run: |
           VERSION="${{ steps.semver.outputs.version }}"
           sed -i '' "0,/^version = \"[^\"]*\"/s//version = \"$VERSION\"/" src-tauri/Cargo.toml
@@ -193,6 +218,7 @@ jobs:
 
       # ── 9. Commit version bump and push tag ──
       - name: Commit version bump and push tag
+        if: steps.semver.outputs.already_bumped != 'true'
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
