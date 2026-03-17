@@ -60,11 +60,10 @@ jobs:
           if [ -n "$EXISTING_TAG" ]; then
             echo "✨ Current commit already has a version tag: $EXISTING_TAG"
             echo "⏩ Skipping version bump and treating this as a retry."
-            
-            # Find the tag before this one to still allow changelog generation
+
             PREV_TAG=$(git tag --list 'v*.*.*' --sort=-version:refname | grep -A 1 "^${EXISTING_TAG}$" | tail -n 1)
-            [ "$PREV_TAG" = "$EXISTING_TAG" ] && PREV_TAG="" # Only one tag exists
-            
+            [ "$PREV_TAG" = "$EXISTING_TAG" ] && PREV_TAG=""
+
             echo "version=${EXISTING_TAG#v}" >> $GITHUB_OUTPUT
             echo "tag=$EXISTING_TAG"          >> $GITHUB_OUTPUT
             echo "last_tag=${PREV_TAG:-v0.0.0}" >> $GITHUB_OUTPUT
@@ -103,7 +102,6 @@ jobs:
 
           # Determine bump type — scan all commits, take highest impact
           BUMP="patch"
-
           while IFS= read -r msg; do
             if echo "$msg" | grep -Eq '^[a-z]+(\(.+\))?!:' || echo "$msg" | grep -q 'BREAKING CHANGE'; then
               BUMP="major"
@@ -170,7 +168,7 @@ jobs:
           [ -n "$OTHER"    ] && NOTES="${NOTES}### 🔧 Other Changes\n${OTHER}\n"
           [ -z "$NOTES"    ] && NOTES="- Various improvements and updates\n"
 
-          printf "$NOTES" > /tmp/changelog.md
+          printf "%b" "$NOTES" > /tmp/changelog.md
           echo "✅ Changelog generated:"
           cat /tmp/changelog.md
 
@@ -186,21 +184,19 @@ jobs:
           echo ""
           echo "Changelog preview:"
           cat /tmp/changelog.md
-          exit 0
 
       # ── 8. Bump version in all config files ──
       - name: Bump version in package.json
-        if: steps.semver.outputs.already_bumped != 'true'
+        if: ${{ inputs.dry_run == false && steps.semver.outputs.already_bumped != 'true' }}
         run: |
           VERSION="${{ steps.semver.outputs.version }}"
           jq --arg v "$VERSION" '.version = $v' package.json > tmp.json && mv tmp.json package.json
           echo "✅ package.json → $VERSION"
 
       - name: Bump version in tauri.conf.json
-        if: steps.semver.outputs.already_bumped != 'true'
+        if: ${{ inputs.dry_run == false && steps.semver.outputs.already_bumped != 'true' }}
         run: |
           VERSION="${{ steps.semver.outputs.version }}"
-          # Supports both Tauri v1 (.package.version) and Tauri v2 (.version)
           if jq -e '.package.version' src-tauri/tauri.conf.json > /dev/null 2>&1; then
             jq --arg v "$VERSION" '.package.version = $v' src-tauri/tauri.conf.json > tmp.json
           else
@@ -210,7 +206,7 @@ jobs:
           echo "✅ tauri.conf.json → $VERSION"
 
       - name: Bump version in Cargo.toml
-        if: steps.semver.outputs.already_bumped != 'true'
+        if: ${{ inputs.dry_run == false && steps.semver.outputs.already_bumped != 'true' }}
         run: |
           VERSION="${{ steps.semver.outputs.version }}"
           sed -i '' "0,/^version = \"[^\"]*\"/s//version = \"$VERSION\"/" src-tauri/Cargo.toml
@@ -218,7 +214,7 @@ jobs:
 
       # ── 9. Commit version bump and push tag ──
       - name: Commit version bump and push tag
-        if: steps.semver.outputs.already_bumped != 'true'
+        if: ${{ inputs.dry_run == false && steps.semver.outputs.already_bumped != 'true' }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -231,18 +227,22 @@ jobs:
 
       # ── 10. Install frontend dependencies ──
       - name: Install frontend dependencies
+        if: ${{ inputs.dry_run == false }}
         run: bun install --frozen-lockfile
 
       # ── 11. Build React frontend ──
       - name: Build frontend
+        if: ${{ inputs.dry_run == false }}
         run: bun run build
 
       # ── 12. Build Tauri universal macOS DMG (Apple Silicon + Intel) ──
       - name: Build Tauri app
+        if: ${{ inputs.dry_run == false }}
         run: bun run tauri build --target universal-apple-darwin
 
       # ── 13. Locate the built DMG ──
       - name: Find DMG artifact
+        if: ${{ inputs.dry_run == false }}
         id: dmg
         run: |
           DMG_PATH=$(find src-tauri/target/universal-apple-darwin/release/bundle/dmg -name "*.dmg" | head -n 1)
@@ -258,6 +258,7 @@ jobs:
       # softprops/action-gh-release requires the tag to already exist
       # in the target repo — it does not create it automatically.
       - name: Create tag in public repo
+        if: ${{ inputs.dry_run == false }}
         run: |
           TAG="${{ steps.semver.outputs.tag }}"
 
@@ -290,6 +291,7 @@ jobs:
 
       # ── 15. Create GitHub Release on the PUBLIC repo and attach DMG ──
       - name: Create GitHub Release on public repo
+        if: ${{ inputs.dry_run == false }}
         uses: softprops/action-gh-release@v2
         with:
           repository: Murali-Puvvada/dock-digits-releases
@@ -302,8 +304,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_PAT }}
 
-      # ── 16. Print the public download URL for easy reference ──
+      # ── 16. Print the public download URL ──
       - name: Print download URL
+        if: ${{ inputs.dry_run == false }}
         run: |
           TAG="${{ steps.semver.outputs.tag }}"
           DMG="${{ steps.dmg.outputs.name }}"
