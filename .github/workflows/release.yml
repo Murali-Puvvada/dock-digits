@@ -19,18 +19,14 @@ jobs:
       contents: write
 
     steps:
-      # ── 0. Guard — fail fast if not triggered from main ──
       - name: Ensure workflow is running from main
         run: |
           if [ "${{ github.ref }}" != "refs/heads/main" ]; then
-            echo "❌ This workflow must be triggered from the 'main' branch."
-            echo "   Current branch: ${{ github.ref }}"
-            echo "   Go to Actions → Release macOS App → Run workflow → select 'main'"
+            echo "❌ Must be triggered from 'main'. Go to Actions → Release macOS App → Run workflow → select 'main'"
             exit 1
           fi
           echo "✅ Running from main"
 
-      # ── 1. Checkout main with full history (needed to read all commits) ──
       - name: Checkout main
         uses: actions/checkout@v4
         with:
@@ -38,45 +34,34 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      # ── 2. Setup Node.js ──
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      # ── 2b. Setup Bun ──
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
 
-      # ── 3. Setup Rust ──
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-apple-darwin,x86_64-apple-darwin
 
-      # ── 4. Cache Rust dependencies ──
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
 
-      # ── 5. Compute next version from conventional commits ──
       - name: Compute next version
         id: semver
         run: |
-          # 1. Check if the current commit already has a version tag (vX.Y.Z)
-          # This happens if a previous run failed AFTER pushing the tag.
           EXISTING_TAG=$(git tag --points-at HEAD 'v*.*.*' | head -n 1)
-
           if [ -n "$EXISTING_TAG" ]; then
-            echo "✨ Current commit already has a version tag: $EXISTING_TAG"
-            echo "⏩ Skipping version bump and treating this as a retry."
-
+            echo "✨ Retry detected — reusing tag $EXISTING_TAG"
             PREV_TAG=$(git tag --list 'v*.*.*' --sort=-version:refname | grep -A 1 "^${EXISTING_TAG}$" | tail -n 1)
             [ "$PREV_TAG" = "$EXISTING_TAG" ] && PREV_TAG=""
-
             echo "version=${EXISTING_TAG#v}" >> $GITHUB_OUTPUT
             echo "tag=$EXISTING_TAG"          >> $GITHUB_OUTPUT
             echo "last_tag=${PREV_TAG:-v0.0.0}" >> $GITHUB_OUTPUT
@@ -85,15 +70,12 @@ jobs:
           fi
 
           echo "already_bumped=false" >> $GITHUB_OUTPUT
-
           LAST_TAG=$(git tag --list 'v*.*.*' --sort=-version:refname | head -n 1)
 
           if [ -z "$LAST_TAG" ]; then
-            echo "ℹ️  No previous tags found. Starting from v0.0.0"
             LAST_TAG="v0.0.0"
             COMMITS=$(git log --pretty=format:"%s" HEAD)
           else
-            echo "✅ Last release tag: $LAST_TAG"
             COMMITS=$(git log --pretty=format:"%s" "${LAST_TAG}..HEAD")
           fi
 
@@ -101,9 +83,6 @@ jobs:
             echo "❌ No commits since last release ($LAST_TAG). Nothing to release."
             exit 1
           fi
-
-          echo "📝 Commits since $LAST_TAG:"
-          echo "$COMMITS"
 
           CURRENT="${LAST_TAG#v}"
           MAJOR=$(echo "$CURRENT" | cut -d. -f1)
@@ -113,15 +92,10 @@ jobs:
           BUMP="patch"
           while IFS= read -r msg; do
             if echo "$msg" | grep -Eq '^[a-z]+(\(.+\))?!:' || echo "$msg" | grep -q 'BREAKING CHANGE'; then
-              BUMP="major"
-              break
+              BUMP="major"; break
             fi
-            if echo "$msg" | grep -Eq '^feat(\(.+\))?:'; then
-              BUMP="minor"
-            fi
+            if echo "$msg" | grep -Eq '^feat(\(.+\))?:'; then BUMP="minor"; fi
           done <<< "$COMMITS"
-
-          echo "📦 Bump type: $BUMP"
 
           if [ "$BUMP" = "major" ]; then
             NEXT_VERSION="$((MAJOR + 1)).0.0"
@@ -131,33 +105,24 @@ jobs:
             NEXT_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
           fi
 
-          echo "🚀 Next version: $NEXT_VERSION"
+          echo "🚀 Next version: $NEXT_VERSION (bump: $BUMP)"
           echo "version=$NEXT_VERSION" >> $GITHUB_OUTPUT
           echo "tag=v$NEXT_VERSION"    >> $GITHUB_OUTPUT
           echo "last_tag=$LAST_TAG"    >> $GITHUB_OUTPUT
-          echo "bump=$BUMP"            >> $GITHUB_OUTPUT
 
-      # ── 6. Generate changelog from conventional commits ──
       - name: Generate changelog
-        id: changelog
         run: |
           LAST_TAG="${{ steps.semver.outputs.last_tag }}"
-
           if [ "$LAST_TAG" = "v0.0.0" ]; then
             COMMITS=$(git log --pretty=format:"%h %s" HEAD)
           else
             COMMITS=$(git log --pretty=format:"%h %s" "${LAST_TAG}..HEAD")
           fi
 
-          BREAKING=""
-          FEATURES=""
-          FIXES=""
-          OTHER=""
-
+          BREAKING=""; FEATURES=""; FIXES=""; OTHER=""
           while IFS= read -r line; do
             HASH=$(echo "$line" | cut -d' ' -f1)
             MSG=$(echo "$line"  | cut -d' ' -f2-)
-
             if echo "$MSG" | grep -Eq '^[a-z]+(\(.+\))?!:' || echo "$MSG" | grep -q 'BREAKING CHANGE'; then
               BREAKING="${BREAKING}- ${MSG} (${HASH})\n"
             elif echo "$MSG" | grep -Eq '^feat(\(.+\))?:'; then
@@ -176,52 +141,37 @@ jobs:
           [ -n "$OTHER"    ] && NOTES="${NOTES}### 🔧 Other Changes\n${OTHER}\n"
           [ -z "$NOTES"    ] && NOTES="- Various improvements and updates\n"
 
-          # ✅ FIX: use printf "%b" so leading "-" is never misread as a flag
           printf "%b" "$NOTES" > /tmp/changelog.md
-          echo "✅ Changelog generated:"
-          cat /tmp/changelog.md
 
-      # ── 7. Stop here if dry run ──
       - name: Dry run summary
         if: ${{ inputs.dry_run == true }}
         run: |
           echo "🧪 DRY RUN — no changes will be made."
-          echo ""
           echo "  Last tag     : ${{ steps.semver.outputs.last_tag }}"
           echo "  Next version : ${{ steps.semver.outputs.tag }}"
-          echo "  Bump type    : ${{ steps.semver.outputs.bump }}"
           echo ""
-          echo "Changelog preview:"
           cat /tmp/changelog.md
 
-      # ── 8. Bump version in all config files ──
       - name: Bump version in package.json
         if: ${{ inputs.dry_run == false && steps.semver.outputs.already_bumped != 'true' }}
         run: |
-          VERSION="${{ steps.semver.outputs.version }}"
-          jq --arg v "$VERSION" '.version = $v' package.json > tmp.json && mv tmp.json package.json
-          echo "✅ package.json → $VERSION"
+          jq --arg v "${{ steps.semver.outputs.version }}" '.version = $v' package.json > tmp.json && mv tmp.json package.json
 
       - name: Bump version in tauri.conf.json
         if: ${{ inputs.dry_run == false && steps.semver.outputs.already_bumped != 'true' }}
         run: |
-          VERSION="${{ steps.semver.outputs.version }}"
           if jq -e '.package.version' src-tauri/tauri.conf.json > /dev/null 2>&1; then
-            jq --arg v "$VERSION" '.package.version = $v' src-tauri/tauri.conf.json > tmp.json
+            jq --arg v "${{ steps.semver.outputs.version }}" '.package.version = $v' src-tauri/tauri.conf.json > tmp.json
           else
-            jq --arg v "$VERSION" '.version = $v' src-tauri/tauri.conf.json > tmp.json
+            jq --arg v "${{ steps.semver.outputs.version }}" '.version = $v' src-tauri/tauri.conf.json > tmp.json
           fi
           mv tmp.json src-tauri/tauri.conf.json
-          echo "✅ tauri.conf.json → $VERSION"
 
       - name: Bump version in Cargo.toml
         if: ${{ inputs.dry_run == false && steps.semver.outputs.already_bumped != 'true' }}
         run: |
-          VERSION="${{ steps.semver.outputs.version }}"
-          sed -i '' "0,/^version = \"[^\"]*\"/s//version = \"$VERSION\"/" src-tauri/Cargo.toml
-          echo "✅ Cargo.toml → $VERSION"
+          sed -i '' "0,/^version = \"[^\"]*\"/s//version = \"${{ steps.semver.outputs.version }}\"/" src-tauri/Cargo.toml
 
-      # ── 9. Commit version bump and push tag ──
       - name: Commit version bump and push tag
         if: ${{ inputs.dry_run == false && steps.semver.outputs.already_bumped != 'true' }}
         run: |
@@ -232,111 +182,76 @@ jobs:
           git tag "${{ steps.semver.outputs.tag }}"
           git push origin main
           git push origin "${{ steps.semver.outputs.tag }}"
-          echo "✅ Pushed version bump + tag ${{ steps.semver.outputs.tag }}"
 
-      # ── 10. Install frontend dependencies ──
       - name: Install frontend dependencies
         if: ${{ inputs.dry_run == false }}
         run: bun install --frozen-lockfile
 
-      # ── 11. Build React frontend ──
       - name: Build frontend
         if: ${{ inputs.dry_run == false }}
         run: bun run build
 
-      # ── 12. Build Tauri universal macOS DMG (Apple Silicon + Intel) ──
       - name: Build Tauri app
         if: ${{ inputs.dry_run == false }}
         run: bun run tauri build --target universal-apple-darwin
 
-      # ── 13. Locate the built DMG ──
       - name: Find and rename DMG artifact
         if: ${{ inputs.dry_run == false }}
         id: dmg
         run: |
-          # Find whatever Tauri named the DMG (e.g. "Dock Digits_1.2.10_universal.dmg")
           DMG_PATH=$(find src-tauri/target/universal-apple-darwin/release/bundle/dmg -name "*.dmg" | head -n 1)
           if [ -z "$DMG_PATH" ]; then
             echo "❌ No DMG found — check the Tauri build logs above."
             exit 1
           fi
-          echo "✅ Original DMG: $DMG_PATH"
-
-          # Rename to a clean, predictable filename with no spaces
-          TAG="${{ steps.semver.outputs.tag }}"
-          CLEAN_NAME="DockDigits-${TAG}-universal.dmg"
+          CLEAN_NAME="DockDigits-${{ steps.semver.outputs.tag }}-universal.dmg"
           CLEAN_PATH="$(dirname "$DMG_PATH")/${CLEAN_NAME}"
           mv "$DMG_PATH" "$CLEAN_PATH"
-
-          echo "✅ Renamed to  : $CLEAN_PATH"
           echo "path=$CLEAN_PATH" >> $GITHUB_OUTPUT
           echo "name=$CLEAN_NAME" >> $GITHUB_OUTPUT
 
-      # ── 14. Create the tag in the PUBLIC repo first ──
       - name: Create tag in public repo
         if: ${{ inputs.dry_run == false }}
         run: |
           TAG="${{ steps.semver.outputs.tag }}"
-
-          echo "🔍 Checking if tag $TAG exists in public repo..."
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
             -H "Authorization: Bearer ${{ secrets.RELEASE_PAT }}" \
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/Murali-Puvvada/dock-digits-releases/git/ref/tags/${TAG}")
 
-          echo "Tag check status: $STATUS"
-
           if [ "$STATUS" = "200" ]; then
-            echo "ℹ️  Tag $TAG already exists in public repo — skipping creation."
+            echo "ℹ️  Tag $TAG already exists — skipping."
           else
-            echo "📌 Fetching HEAD commit SHA from public repo..."
-            SHA_RESPONSE=$(curl -s \
+            SHA=$(curl -s \
               -H "Authorization: Bearer ${{ secrets.RELEASE_PAT }}" \
               -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/Murali-Puvvada/dock-digits-releases/commits/HEAD")
-
-            SHA=$(echo "$SHA_RESPONSE" | jq -r '.sha')
-            echo "HEAD SHA: $SHA"
+              "https://api.github.com/repos/Murali-Puvvada/dock-digits-releases/commits/HEAD" | jq -r '.sha')
 
             if [ -z "$SHA" ] || [ "$SHA" = "null" ]; then
-              echo "❌ Could not get HEAD SHA from public repo. Response:"
-              echo "$SHA_RESPONSE"
+              echo "❌ Could not get HEAD SHA from public repo."
               exit 1
             fi
 
-            echo "📌 Creating tag $TAG at $SHA in public repo..."
-            CREATE_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST \
+            CREATE_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
               -H "Authorization: Bearer ${{ secrets.RELEASE_PAT }}" \
               -H "Accept: application/vnd.github+json" \
               "https://api.github.com/repos/Murali-Puvvada/dock-digits-releases/git/refs" \
               -d "{\"ref\": \"refs/tags/${TAG}\", \"sha\": \"${SHA}\"}")
 
-            CREATE_STATUS=$(echo "$CREATE_RESPONSE" | grep "HTTP_STATUS:" | cut -d: -f2)
-            CREATE_BODY=$(echo "$CREATE_RESPONSE" | grep -v "HTTP_STATUS:")
-
-            echo "Create tag response ($CREATE_STATUS):"
-            echo "$CREATE_BODY"
-
             if [ "$CREATE_STATUS" != "201" ]; then
-              echo "❌ Failed to create tag in public repo (HTTP $CREATE_STATUS)"
+              echo "❌ Failed to create tag (HTTP $CREATE_STATUS)"
               exit 1
             fi
-
-            echo "✅ Tag $TAG created in Murali-Puvvada/dock-digits-releases"
+            echo "✅ Tag $TAG created"
           fi
 
-      # ── 15. Create GitHub Release and upload DMG via API directly ──
-      - name: Create GitHub Release on public repo
+      - name: Create release and upload DMG
         if: ${{ inputs.dry_run == false }}
         run: |
           TAG="${{ steps.semver.outputs.tag }}"
           DMG_PATH="${{ steps.dmg.outputs.path }}"
           DMG_NAME="${{ steps.dmg.outputs.name }}"
-          CHANGELOG=$(cat /tmp/changelog.md)
 
-          echo "📋 Creating release $TAG on public repo..."
-
-          # Create the release
           RELEASE_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST \
             -H "Authorization: Bearer ${{ secrets.RELEASE_PAT }}" \
             -H "Accept: application/vnd.github+json" \
@@ -344,7 +259,7 @@ jobs:
             -d "{
               \"tag_name\": \"${TAG}\",
               \"name\": \"Release ${TAG}\",
-              \"body\": $(echo "$CHANGELOG" | jq -Rs .),
+              \"body\": $(cat /tmp/changelog.md | jq -Rs .),
               \"draft\": false,
               \"prerelease\": false
             }")
@@ -352,55 +267,25 @@ jobs:
           RELEASE_STATUS=$(echo "$RELEASE_RESPONSE" | grep "HTTP_STATUS:" | cut -d: -f2)
           RELEASE_BODY=$(echo "$RELEASE_RESPONSE" | grep -v "HTTP_STATUS:")
 
-          echo "Create release response ($RELEASE_STATUS):"
-          echo "$RELEASE_BODY"
-
           if [ "$RELEASE_STATUS" != "201" ]; then
             echo "❌ Failed to create release (HTTP $RELEASE_STATUS)"
+            echo "$RELEASE_BODY"
             exit 1
           fi
 
-          # Extract upload URL from the response
           UPLOAD_URL=$(echo "$RELEASE_BODY" | jq -r '.upload_url' | sed 's/{?name,label}//')
-          RELEASE_ID=$(echo "$RELEASE_BODY" | jq -r '.id')
-          echo "✅ Release created (id: $RELEASE_ID)"
-          echo "📤 Uploading DMG: $DMG_NAME..."
 
-          echo "📎 DMG name : $DMG_NAME"
-          echo "📎 DMG path : $DMG_PATH"
-          echo "📎 Upload URL: ${UPLOAD_URL}?name=${DMG_NAME}"
-
-          # Upload the DMG asset
-          UPLOAD_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST \
+          UPLOAD_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
             -H "Authorization: Bearer ${{ secrets.RELEASE_PAT }}" \
             -H "Accept: application/vnd.github+json" \
             -H "Content-Type: application/octet-stream" \
             "${UPLOAD_URL}?name=${DMG_NAME}" \
             --data-binary "@${DMG_PATH}")
 
-          UPLOAD_STATUS=$(echo "$UPLOAD_RESPONSE" | grep "HTTP_STATUS:" | cut -d: -f2)
-          UPLOAD_BODY=$(echo "$UPLOAD_RESPONSE" | grep -v "HTTP_STATUS:")
-
-          echo "Upload response ($UPLOAD_STATUS):"
-          echo "$UPLOAD_BODY" | jq '{ id, name, state, browser_download_url }'
-
           if [ "$UPLOAD_STATUS" != "201" ]; then
             echo "❌ Failed to upload DMG (HTTP $UPLOAD_STATUS)"
             exit 1
           fi
 
-          echo "✅ DMG uploaded successfully"
-
-      # ── 16. Print the public download URL ──
-      - name: Print download URL
-        if: ${{ inputs.dry_run == false }}
-        run: |
-          TAG="${{ steps.semver.outputs.tag }}"
-          DMG="${{ steps.dmg.outputs.name }}"
-          echo ""
           echo "✅ Release published!"
-          echo ""
-          echo "🔗 Public download URL:"
-          echo "   https://github.com/Murali-Puvvada/dock-digits-releases/releases/download/${TAG}/${DMG}"
-          echo ""
-          echo "Paste this URL into your website download button."
+          echo "🔗 https://github.com/Murali-Puvvada/dock-digits-releases/releases/download/${TAG}/${DMG_NAME}"
