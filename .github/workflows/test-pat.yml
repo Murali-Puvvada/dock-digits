@@ -7,33 +7,25 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Test PAT permissions
+      - name: Debug token and repo
         run: |
-          echo "Testing token..."
+          # Print first 4 chars of token so we can confirm it's not empty
+          # (safe — doesn't expose the full token)
+          echo "Token starts with: ${TOKEN:0:4}"
+          echo "Token length: ${#TOKEN}"
 
-          # Check who the token belongs to
-          curl -s \
-            -H "Authorization: Bearer ${{ secrets.RELEASE_PAT }}" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/user | jq '{ login, type }'
-
-          # Check token scopes (classic PAT shows scopes in header)
-          echo "--- Token scopes ---"
+          # Check scopes
+          echo "--- Scopes ---"
           curl -sI \
-            -H "Authorization: Bearer ${{ secrets.RELEASE_PAT }}" \
-            https://api.github.com | grep -i x-oauth-scopes
+            -H "Authorization: Bearer $TOKEN" \
+            https://api.github.com \
+            | grep -i "x-oauth"
 
-          # Try to list releases on the public repo
-          echo "--- Can read public repo releases? ---"
+          # List YOUR repos to confirm token works at all
+          echo "--- Your public repos ---"
           curl -s \
-            -H "Authorization: Bearer ${{ secrets.RELEASE_PAT }}" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/john-doe/myapp-releases/releases | jq '.'
-
-          # Try to create a test release
-          echo "--- Attempting to create a draft release ---"
-          curl -s -X POST \
-            -H "Authorization: Bearer ${{ secrets.RELEASE_PAT }}" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/john-doe/myapp-releases/releases \
-            -d '{"tag_name":"v0.0.0-test","name":"Test Release","draft":true}' | jq '{ id, html_url, message }'
+            -H "Authorization: Bearer $TOKEN" \
+            https://api.github.com/user/repos?type=public \
+            | jq '[.[].full_name]'
+        env:
+          TOKEN: ${{ secrets.RELEASE_PAT }}
