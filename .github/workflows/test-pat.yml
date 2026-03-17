@@ -1,0 +1,39 @@
+name: Test PAT
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test PAT permissions
+        run: |
+          echo "Testing token..."
+
+          # Check who the token belongs to
+          curl -s \
+            -H "Authorization: Bearer ${{ secrets.RELEASE_PAT }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/user | jq '{ login, type }'
+
+          # Check token scopes (classic PAT shows scopes in header)
+          echo "--- Token scopes ---"
+          curl -sI \
+            -H "Authorization: Bearer ${{ secrets.RELEASE_PAT }}" \
+            https://api.github.com | grep -i x-oauth-scopes
+
+          # Try to list releases on the public repo
+          echo "--- Can read public repo releases? ---"
+          curl -s \
+            -H "Authorization: Bearer ${{ secrets.RELEASE_PAT }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/john-doe/myapp-releases/releases | jq '.'
+
+          # Try to create a test release
+          echo "--- Attempting to create a draft release ---"
+          curl -s -X POST \
+            -H "Authorization: Bearer ${{ secrets.RELEASE_PAT }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/john-doe/myapp-releases/releases \
+            -d '{"tag_name":"v0.0.0-test","name":"Test Release","draft":true}' | jq '{ id, html_url, message }'
