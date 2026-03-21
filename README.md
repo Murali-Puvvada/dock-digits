@@ -6,6 +6,10 @@ Dock Digits lets you launch or focus your favorite apps using numbered keyboard 
 
 Fast. Lightweight. Keyboard-first.
 
+<a href="https://www.buymeacoffee.com/muralipuvvada" target="_blank">
+    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;">
+</a>
+
 ---
 
 ## ✨ Features
