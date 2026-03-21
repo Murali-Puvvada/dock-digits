@@ -32,6 +32,7 @@ function App() {
   const [dockApps, setDockApps] = useState<AppEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [launchAtLogin, setLaunchAtLogin] = useState(false);
+  const [showDockIcon, setShowDockIcon] = useState(false);
   const [modifiers, setModifiers] = useState<string[]>(["option"]);
   const [showSettings, setShowSettings] = useState(false);
 
@@ -53,6 +54,18 @@ function App() {
       await performRefresh();
       const enabled = await isEnabled();
       setLaunchAtLogin(enabled);
+
+      // Fetch persistent config
+      try {
+        const config = await invoke<{
+          show_dock_icon: boolean;
+          modifiers: string[];
+        }>("get_config");
+        setShowDockIcon(config.show_dock_icon);
+        setModifiers(config.modifiers);
+      } catch (err) {
+        console.error("Failed to fetch config:", err);
+      }
     }
 
     init();
@@ -69,6 +82,10 @@ function App() {
       performRefresh();
     });
 
+    const unlistenDockIcon = listen<boolean>("dock-icon-updated", (event) => {
+      setShowDockIcon(event.payload);
+    });
+
     const unlistenOpenSettings = listen("open-settings", () => {
       setShowSettings(true);
     });
@@ -76,6 +93,7 @@ function App() {
     return () => {
       unlistenLogin.then((f) => f());
       unlistenRefresh.then((f) => f());
+      unlistenDockIcon.then((f) => f());
       unlistenOpenSettings.then((f) => f());
     };
   }, []);
@@ -123,6 +141,7 @@ function App() {
               modifiers={modifiers}
               onModifiersChange={setModifiers}
               launchAtLogin={launchAtLogin}
+              showDockIcon={showDockIcon}
               onBack={() => setShowSettings(false)}
             />
           ) : (
