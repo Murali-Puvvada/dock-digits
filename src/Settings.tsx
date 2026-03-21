@@ -17,7 +17,7 @@ function Settings({
   onBack,
 }: SettingsPageProps) {
   return (
-    <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+    <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar animate-in fade-in slide-in-from-right-4 duration-300">
       <ShortcutConfig
         initialModifiers={modifiers}
         onApplied={onModifiersChange}
