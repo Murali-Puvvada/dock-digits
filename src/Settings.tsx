@@ -2,11 +2,13 @@ import { ArrowLeft } from "lucide-react";
 import ShortcutConfig from "./ShortcutConfig";
 import LaunchAtLogin from "./LaunchAtLogin";
 import AutoUpdater from "./AutoUpdater";
+import DockIcon from "./DockIcon";
 
 interface SettingsPageProps {
   modifiers: string[];
   onModifiersChange: (modifiers: string[]) => void;
   launchAtLogin: boolean;
+  showDockIcon: boolean;
   onBack: () => void;
 }
 
@@ -14,6 +16,7 @@ function Settings({
   modifiers,
   onModifiersChange,
   launchAtLogin,
+  showDockIcon,
   onBack,
 }: SettingsPageProps) {
   return (
@@ -23,6 +26,7 @@ function Settings({
         onApplied={onModifiersChange}
       />
       <LaunchAtLogin isEnabled={launchAtLogin} />
+      <DockIcon isEnabled={showDockIcon} />
       <AutoUpdater />
       <div className="px-5 pb-8">
         <button

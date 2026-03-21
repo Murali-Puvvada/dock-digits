@@ -10,14 +10,14 @@ mod shortcuts;
 mod state;
 mod tray_menu;
 
-use crate::login::toggle_launch_at_login;
+use crate::login::{set_dock_visibility, toggle_launch_at_login};
 use crate::models::dock_app::DockApp;
 use crate::shortcuts::reload_shortcuts;
 
 use tauri::ActivationPolicy;
 use tauri::Emitter;
 use tauri::Manager;
-use tauri_plugin_autostart::MacosLauncher;
+use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 
 use tauri_plugin_single_instance::init as single_instance;
 fn main() {
@@ -43,16 +43,38 @@ fn main() {
             toggle_launch_at_login,
             app_launcher::launch_app,
             set_shortcut_modifiers,
+            get_config,
+            set_dock_visibility,
         ])
         // Initial Setup
         .setup(|app| {
-            // Hide Dock icon (menu bar utility mode)
-            app.set_activation_policy(ActivationPolicy::Accessory);
-
-            // Setup Tray Menu
+            // Setup Tray Menu (This also initializes AppState with Config)
             tray_menu::setup_tray_menu(app)?;
 
-            shortcuts::register_shortcuts(app.handle(), None);
+            let (show_dock_icon, launch_at_login, modifiers) = {
+                let state: tauri::State<crate::state::app_state::AppState> = app.state();
+                let config = state.config.lock().unwrap();
+                (config.show_dock_icon, config.launch_at_login, config.modifiers.clone())
+            };
+
+            // Sync Launch at Login with OS
+            let autolaunch_manager = app.autolaunch();
+            if launch_at_login {
+                let _ = autolaunch_manager.enable();
+            } else {
+                let _ = autolaunch_manager.disable();
+            }
+
+            // Apply Dock Icon Visibility (menu bar utility mode or regular)
+            if show_dock_icon {
+                let _ = app.set_activation_policy(ActivationPolicy::Regular);
+                #[cfg(target_os = "macos")]
+                crate::login::refresh_macos_dock_icon(app.handle());
+            } else {
+                let _ = app.set_activation_policy(ActivationPolicy::Accessory);
+            }
+
+            shortcuts::register_shortcuts(app.handle(), Some(&modifiers));
 
             // Show window on manual launch (not autostart)
             let args: Vec<String> = std::env::args().collect();
@@ -81,6 +103,22 @@ fn refresh_dock_apps(app: tauri::AppHandle) {
 }
 
 #[tauri::command]
-fn set_shortcut_modifiers(app: tauri::AppHandle, modifiers: Vec<String>) -> Result<(), String> {
+fn set_shortcut_modifiers(
+    app: tauri::AppHandle,
+    state: tauri::State<crate::state::app_state::AppState>,
+    modifiers: Vec<String>,
+) -> Result<(), String> {
+    {
+        let mut config = state.config.lock().unwrap();
+        config.modifiers = modifiers.clone();
+        config.save()?;
+    }
     reload_shortcuts(&app, modifiers)
+}
+
+#[tauri::command]
+fn get_config(
+    state: tauri::State<crate::state::app_state::AppState>,
+) -> crate::state::config::Config {
+    state.config.lock().unwrap().clone()
 }

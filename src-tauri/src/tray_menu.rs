@@ -7,17 +7,33 @@ use tauri::{
     menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem},
     tray::TrayIconBuilder,
 };
-use tauri_plugin_autostart::ManagerExt;
+
 
 pub fn setup_tray_menu(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    //Check if launch at login is enabled
-    let autolaunch_manager = app.autolaunch();
-    let enabled = autolaunch_manager.is_enabled().unwrap_or(false);
+
+    // Load Config
+    let config = crate::state::config::Config::load();
+    let show_dock_icon = config.show_dock_icon;
+    let launch_at_login = config.launch_at_login;
 
     // Tray Menu
     let open = MenuItem::with_id(app, "open", "Open Dock Digits", true, None::<&str>)?;
-    let login =
-        CheckMenuItem::with_id(app, "login", "Launch at Login", true, enabled, None::<&str>)?;
+    let login = CheckMenuItem::with_id(
+        app,
+        "login",
+        "Launch at Login",
+        true,
+        launch_at_login,
+        None::<&str>,
+    )?;
+    let dock_icon = CheckMenuItem::with_id(
+        app,
+        "dock_icon",
+        "Show Dock Icon",
+        true,
+        show_dock_icon,
+        None::<&str>,
+    )?;
     let refresh = MenuItem::with_id(app, "refresh", "Refresh Dock Apps", true, None::<&str>)?;
     let settings = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
     let update = MenuItem::with_id(app, "update", "Check for Updates", true, None::<&str>)?;
@@ -30,14 +46,15 @@ pub fn setup_tray_menu(app: &mut tauri::App) -> Result<(), Box<dyn std::error::E
     let menu = Menu::with_items(
         app,
         &[
-            &sep1, &open, &login, &refresh, &sep2, &settings, &update, &sep3, &quit,
+            &sep1, &open, &login, &dock_icon, &refresh, &sep2, &settings, &update, &sep3, &quit,
         ],
     )?;
 
     // Manage AppState with the item handle
     app.manage(AppState {
-        launch_at_login: std::sync::Mutex::new(enabled),
         login_menu_item: std::sync::Mutex::new(Some(login.clone())),
+        show_dock_icon_menu_item: std::sync::Mutex::new(Some(dock_icon.clone())),
+        config: std::sync::Mutex::new(config),
     });
 
     // Tray Icon and onClick Launches the App
@@ -53,6 +70,10 @@ pub fn setup_tray_menu(app: &mut tauri::App) -> Result<(), Box<dyn std::error::E
             "login" => {
                 let state: State<AppState> = app.state();
                 toggle_launch_at_login(app.clone(), state);
+            }
+            "dock_icon" => {
+                let state: State<AppState> = app.state();
+                let _ = crate::login::toggle_dock_icon_logic(app, &state);
             }
             "refresh" => {
                 let _ = app.emit("dock-apps-refreshed", ());
