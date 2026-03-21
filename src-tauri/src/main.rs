@@ -54,6 +54,15 @@ fn main() {
 
             shortcuts::register_shortcuts(app.handle(), None);
 
+            // Show window on manual launch (not autostart)
+            let args: Vec<String> = std::env::args().collect();
+            if !args.contains(&"--autostart".to_string()) {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+            }
+
             Ok(())
         })
         // Start the engine (ONLY ONCE)
