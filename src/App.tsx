@@ -117,7 +117,7 @@ function App() {
         </div>
 
         {/* Dynamic Content Area */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
+        <div className="flex-1 flex flex-col min-h-0">
           {showSettings ? (
             <Settings
               modifiers={modifiers}
@@ -126,7 +126,7 @@ function App() {
               onBack={() => setShowSettings(false)}
             />
           ) : (
-            <div className="divide-y divide-zinc-800/50 animate-in fade-in slide-in-from-left-4 duration-300">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar divide-y divide-zinc-800/50 animate-in fade-in slide-in-from-left-4 duration-300">
               {dockApps.length === 0 ? (
                 <div className="px-5 py-12 text-center text-zinc-500 text-sm">
                   {loading
