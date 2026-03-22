@@ -41,6 +41,11 @@ If the app is:
 - Already running → it comes to the front
 
 ---
+## Gallery
+
+<img width="912" height="712" alt="Screenshot 2026-03-22 at 11 42 24 AM" src="https://github.com/user-attachments/assets/9d781285-83d8-4b26-b867-be8107f7f331" />
+
+---
 
 ## 🛠 Tech Stack
 
