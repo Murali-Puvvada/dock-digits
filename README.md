@@ -16,7 +16,7 @@ Fast. Lightweight. Keyboard-first.
 
 - 🔢 Launch apps using position-based shortcuts (e.g. `Option + 1`)
 - 🚀 Automatically focuses app if already running
-- 📂 Drag-and-drop app ordering
+- 🪄 Mirrors your macOS Dock order automatically
 - 🧠 Persistent configuration
 - 🖥 Runs as a lightweight background utility
 - 🔄 Optional launch at login
@@ -25,9 +25,8 @@ Fast. Lightweight. Keyboard-first.
 
 ## 🧩 How It Works
 
-1. Add apps to your Dock Digits list.
-2. Arrange them in your preferred order.
-3. Use numbered shortcuts to launch or focus them.
+1. Your apps are automatically pulled from your macOS Dock order.
+2. Use numbered shortcuts to launch or focus them instantly.
 
 | Shortcut   | Action                  |
 | ---------- | ----------------------- |
